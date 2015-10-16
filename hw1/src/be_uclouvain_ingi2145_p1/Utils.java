@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -99,7 +100,13 @@ public class Utils
 
         Job job = Job.getInstance(PoIDriver.GET.getConf());
         job.setJarByClass(PoIDriver.class);
+        
+        //job.setOutputFormatClass(GraphOutputFormat.class);
+        
         FileOutputFormat.setOutputPath(job, new Path(outputDir));
+        
+        //GraphOutputFormat.setOutputPath(job, new Path(outputDir));
+        //job.setOutputFormatClass(GraphOutputFormat.class);
         FileInputFormat.addInputPath(job, new Path(inputDir));
         job.setMapperClass(mapClass);
 
