@@ -9,6 +9,8 @@ import java.util.StringTokenizer;
 
 import org.apache.hadoop.io.Writable;
 
+import org.apache.log4j.Logger;
+
 public class GraphNode implements Writable{
 	public static enum Color {
 		WHITE, GRAY, BLACK
@@ -17,28 +19,38 @@ public class GraphNode implements Writable{
 	int id;
 	int distance;
 	int nEdges;
-	List<Integer> edges = new ArrayList<Integer>();
+	List<Integer> edges;
 	Color color;
 	Integer parentId;
 
 	public GraphNode()
 	{
-
-			
-			
+		this.id = 0;
+		parentId = 0;
+			edges = new ArrayList<Integer>();
+			nEdges = 0;
 			distance = Integer.MAX_VALUE;
 			color = Color.WHITE;
-			parentId = null;
 
-		
 	}
 	
+	public GraphNode(int id)
+	{
+		this.id = id;
+		parentId = id;
+			edges = new ArrayList<Integer>();
+			nEdges = 0;
+			distance = Integer.MAX_VALUE;
+			color = Color.WHITE;
+
+	}	
 	// constructor
 	//the parameter nodeInfo  is the line that is passed from the input, this nodeInfo is then split into key, value pair where the key is the node id
 	//and the value is the information associated with the node
 	
 	public GraphNode(String nodeInfo) throws IOException {
-		this();
+		distance = Integer.MAX_VALUE;
+		color = Color.WHITE;
 		
 		StringTokenizer st = new StringTokenizer(nodeInfo, " ");
 		if (st.countTokens() != 2) {
@@ -46,12 +58,14 @@ public class GraphNode implements Writable{
 		}
 	     
 		// try to parse 
-		
 		id = Integer.parseInt(st.nextToken());
+		parentId = id;
+		
 		
 		StringTokenizer stEdges = new StringTokenizer(st.nextToken(), ",");
 		nEdges = stEdges.countTokens();
 		
+		edges = new ArrayList<Integer>();
 		while(stEdges.hasMoreTokens()){
 			try {
 				edges.add(Integer.parseInt(stEdges.nextToken()));
@@ -64,13 +78,15 @@ public class GraphNode implements Writable{
 	@Override
 	public void write(DataOutput out) throws IOException {
 		// TODO Auto-generated method stub
-		out.write(id);
-		out.write(distance);
+		out.writeInt(id);
+		out.writeInt(distance);
+		out.writeInt(nEdges);
+		
 		for(Integer e : edges){
-			out.write(e);
+			out.writeInt(e);
 		}
 		out.writeUTF(color.toString());
-		out.write(parentId);
+		out.writeInt(parentId);
 	}
 
 	@Override
@@ -78,6 +94,10 @@ public class GraphNode implements Writable{
 		// TODO Auto-generated method stub
 		id = in.readInt();
 		distance = in.readInt();
+		
+		nEdges = in.readInt();
+		
+		edges = new ArrayList<Integer>();
 		for(int i=0; i < nEdges; i++)
 			edges.add(in.readInt());
 		color = Color.valueOf(in.readUTF());

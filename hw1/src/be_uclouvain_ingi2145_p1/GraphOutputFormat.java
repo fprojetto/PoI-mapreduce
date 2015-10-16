@@ -7,7 +7,7 @@ import java.util.Iterator;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
 
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -16,10 +16,10 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.log4j.Logger;
 
 
-public class GraphOutputFormat extends FileOutputFormat<LongWritable, GraphNode>{
+public class GraphOutputFormat extends FileOutputFormat<Text, GraphNode>{
 
 	@Override
-	public RecordWriter<LongWritable, GraphNode> getRecordWriter(
+	public RecordWriter<Text, GraphNode> getRecordWriter(
 			TaskAttemptContext job) throws IOException, InterruptedException {
 		// TODO Auto-generated method stub
 		FSDataOutputStream fileOut=null;
@@ -50,7 +50,7 @@ public class GraphOutputFormat extends FileOutputFormat<LongWritable, GraphNode>
 		return new GraphNodeRecordWriter(fileOut);
 	}
 	*/
-	static class GraphNodeRecordWriter extends RecordWriter<LongWritable, GraphNode>
+	static class GraphNodeRecordWriter extends RecordWriter<Text, GraphNode>
 	{
 		private DataOutputStream out;
 		
@@ -64,7 +64,7 @@ public class GraphOutputFormat extends FileOutputFormat<LongWritable, GraphNode>
 		    }
 		
 		@Override
-		public synchronized void write(LongWritable key, GraphNode value) throws IOException {
+		public synchronized void write(Text key, GraphNode value) throws IOException {
 			// TODO Auto-generated method stub
 		      if (key == null || value == null) {
 		        return;
@@ -81,7 +81,7 @@ public class GraphOutputFormat extends FileOutputFormat<LongWritable, GraphNode>
 		      while(it.hasNext()){
 		    	  out.writeBytes(","+it.next());
 		      }
-		      
+		      //Logger.getRootLogger().fatal("[INGI2145] node written: "+value.edges);
 		      if(value.distance == Integer.MAX_VALUE){
 		    	  out.writeBytes(" MAX");
 		      }else{
