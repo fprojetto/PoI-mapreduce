@@ -9,99 +9,282 @@ import java.util.StringTokenizer;
 
 import org.apache.hadoop.io.Writable;
 
-import org.apache.log4j.Logger;
-
+/** 
+ * GraphNode class.
+ * It represents one node in the social graph. 
+ * It carries information about it's neighborhood and info used for the PoI algorithm.
+ * 
+ * It implements the Writable interface so it can be emitted as a type, without needs of 
+ * conversions from/to a string for example, through various steps of a map reduce job. 
+ * 
+ * @author Filippo Projetto
+ */
 public class GraphNode implements Writable{
-	public static enum Color {
-		WHITE, GRAY, BLACK
-	};
 	
-	int id;
-	int distance;
-	int nEdges;
-	List<Integer> edges;
-	Color color;
-	Integer parentId;
-
+	private int id; //node id
+	private int distance; //minimum distance from source node
+	private List<Integer> edges; //neighborhood: list of nodes id
+	private Color color; //represents the status of the node during the breadth search
+	/*
+	 * First hop to reach this node from the source, with the minimum cost. Eventually more than one.
+	 * It is used to give in output the set of immediate neighbors of the source node that have been used  
+	 * to PoIs found by the algorithm.
+	 */
+	private List<Integer> roots; 
+	
+	/**
+	 * Build a graph node without any information.
+	 * 
+	 * Set distance to the source as infinite (MAX_VALUE) and mark it as not visited/examined
+	 * yet (WHITE).
+	 * 
+	 * @param id node id
+	 */
 	public GraphNode()
 	{
 		this.id = 0;
-		parentId = 0;
-			edges = new ArrayList<Integer>();
-			nEdges = 0;
-			distance = Integer.MAX_VALUE;
-			color = Color.WHITE;
-
-	}
-	
-	public GraphNode(int id)
-	{
-		this.id = id;
-		parentId = id;
-			edges = new ArrayList<Integer>();
-			nEdges = 0;
-			distance = Integer.MAX_VALUE;
-			color = Color.WHITE;
-
-	}	
-	// constructor
-	//the parameter nodeInfo  is the line that is passed from the input, this nodeInfo is then split into key, value pair where the key is the node id
-	//and the value is the information associated with the node
-	
-	public GraphNode(String nodeInfo) throws IOException {
+		roots = new ArrayList<Integer>();
+		edges = new ArrayList<Integer>();
 		distance = Integer.MAX_VALUE;
 		color = Color.WHITE;
+	}
+
+	/**
+	 * Build a graph node without information about its connection on the graph.
+	 * Set distance to the source as infinite (MAX_VALUE) and mark it as not 
+	 * visited/examined yet (WHITE).
+	 * 
+	 * @param id node id
+	 */
+	public GraphNode(int id)
+	{
+		this();
+		this.id = id;
+	}	
+	
+	/**
+	 * Build a graph node setting its id and neighbor according to the input parameter.
+	 * Set distance to the source as infinite (MAX_VALUE) and mark it as not 
+	 * visited/examined yet (WHITE).
+	 * 
+	 * @param nodeInfo node id and list of neighbors
+	 * @throws IOException
+	 */
+	public GraphNode(String nodeInfo) throws IOException 
+	{
+		this();
 		
-		StringTokenizer st = new StringTokenizer(nodeInfo, " ");
+		StringTokenizer stEdges;
+		StringTokenizer st;
+		
+		/*
+		 * parsify the string according to the format (<node id> <[list of neighbors]>)
+		 */
+		st = new StringTokenizer(nodeInfo, " ");
 		if (st.countTokens() != 2) {
 			throw new IOException("Invalid record received");
 		}
-	     
-		// try to parse 
-		id = Integer.parseInt(st.nextToken());
-		parentId = id;
-		
-		
-		StringTokenizer stEdges = new StringTokenizer(st.nextToken(), ",");
-		nEdges = stEdges.countTokens();
-		
-		edges = new ArrayList<Integer>();
-		while(stEdges.hasMoreTokens()){
-			try {
-				edges.add(Integer.parseInt(stEdges.nextToken()));
-			}catch(NumberFormatException nfe){
-				throw new IOException("Error parsing integer value in record");
-			}
-		}		    			
+
+		try {
+			id = Integer.parseInt(st.nextToken());// set id
+	
+			/*
+			 * Set the neighborhood
+			 */
+			stEdges = new StringTokenizer(st.nextToken(), ",");
+			while(stEdges.hasMoreTokens()){
+					edges.add(Integer.parseInt(stEdges.nextToken()));
+			}	
+		}catch(NumberFormatException nfe){
+			throw new IOException("Error parsing integer value in record");
+		}
 	}
 	
+	/**
+	 * 
+	 * During the search, a node can be in one of this states:
+	 * 		- WHITE, not visited yet
+	 * 		- GRAY, just visited, its neighborhood it is going to be visited in the next iteration if any
+	 * 		- BLACK, done. No more processing on its neighborhood.
+	 * 
+	 * @author Filippo Projetto
+	 *
+	 */
+	public static enum Color {
+		WHITE, GRAY, BLACK
+	};
+
+	/**
+	 * 
+	 * @return node id
+	 */
+	public int getId() {
+		return id;
+	}
+
+	/**
+	 * 
+	 * @param id node id
+	 */
+	public void setId(int id) {
+		this.id = id;
+	}
+
+	/**
+	 * 
+	 * @return estimated distance to the source node. It is equal to MAX_VALUE at the beginning.
+	 */
+	public int getDistance() {
+		return distance;
+	}
+
+	/**
+	 * 
+	 * @param distance set distance to the source node.
+	 */
+	public void setDistance(int distance) {
+		this.distance = distance;
+	}
+
+	/**
+	 * 
+	 * @return list of neighbors' id
+	 */
+	public List<Integer> getEdges() {
+		return edges;
+	}
+
+	/**
+	 * 
+	 * @return set the list of neighbors
+	 */
+	public void setEdges(List<Integer> edges) {
+		this.edges = new ArrayList<Integer>(edges);
+	}
+
+	/**
+	 * 
+	 * @return color = state during the search (WHITE, GRAY, BLACK).
+	 */
+	public Color getColor() {
+		return color;
+	}
+
+	/**
+	 * 
+	 * @return set the color according to the node state during the search (WHITE, GRAY, BLACK).
+	 */
+	public void setColor(Color color) {
+		this.color = color;
+	}
+
+	/**
+	 * Add <roots> to the list of neighbors for this node.
+	 * 
+	 * @param roots immediate source node neighbors
+	 */
+	public void addRoots(List<Integer> roots) 
+	{
+		for (Integer node : roots){
+			roots.add(node);
+		}
+	}
+	
+	/**
+	 * 
+	 * @return the list of immediate source node neighbors for this node.
+	 */
+	public List<Integer> getRoots() 
+	{
+		return roots;
+	}
+	
+	/**
+	 * Create a new immediate source node neighbors list
+	 * initializing it with the list passed as argument
+	 * 
+	 * @param roots immediate source node neighbors
+	 */
+	public void setRoots(List<Integer> roots) 
+	{
+		this.roots = new ArrayList<Integer>(roots);
+	}
+	
+	/**
+	 * Add <root> to the list of neighbors for this node.
+	 * 
+	 * @param root immediate source node neighbor
+	 */
+	public void addRoot(Integer root) 
+	{
+		this.roots.add(root);
+	}
+	
+	/**
+	 * implementation of the Writeble interface to make this type
+	 * usable as input of Hadoop mapper, reducer, ... 
+	 */
 	@Override
 	public void write(DataOutput out) throws IOException {
-		// TODO Auto-generated method stub
 		out.writeInt(id);
 		out.writeInt(distance);
-		out.writeInt(nEdges);
 		
+		/**
+		 * write neighborhood and its size.
+		 * The size is only used to know how integers read
+		 * in the readFields function.
+		 */
+		out.writeInt(edges.size());
 		for(Integer e : edges){
 			out.writeInt(e);
 		}
+
 		out.writeUTF(color.toString());
-		out.writeInt(parentId);
+		
+		/**
+		 * write immediate neighbors of the  
+		 * source node and its size.
+		 * The size is only used to know how integers read
+		 * in the readFields function.
+		 */
+		out.writeInt(roots.size());
+		if(roots.size() > 0){	
+			for(Integer i : roots)
+				out.writeInt(i);
+		}
 	}
 
+	/**
+	 * implementation of the Writeble interface to make this type
+	 * usable as input of Hadoop mapper, reducer, ... 
+	 */
 	@Override
 	public void readFields(DataInput in) throws IOException {
-		// TODO Auto-generated method stub
+		int nEdges;
+		int nRoots=0;
+		
 		id = in.readInt();
 		distance = in.readInt();
-		
+
+		/*
+		 * read adjacency list
+		 */
 		nEdges = in.readInt();
-		
 		edges = new ArrayList<Integer>();
 		for(int i=0; i < nEdges; i++)
 			edges.add(in.readInt());
+		
 		color = Color.valueOf(in.readUTF());
-		parentId = in.readInt();
-	}
+		
+		/*
+		 * read immediate neighbors of the  
+		 * source node list
+		 */
+		nRoots = in.readInt();
+		roots = new ArrayList<Integer>();
+		for(int j =0; j < nRoots; j++){
+			roots.add(in.readInt());
+		}
 
+	}
 }

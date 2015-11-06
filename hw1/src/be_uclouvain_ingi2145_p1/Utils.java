@@ -2,6 +2,7 @@ package be_uclouvain_ingi2145_p1;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.hadoop.mapreduce.Job;
@@ -47,10 +48,14 @@ public class Utils
     /**
      * Given an output folder, check if a connection node has been found for the Person of Interest
      */
-    static boolean checkResults(FileSystem fs, Path path) throws IOException {
+    static boolean checkResults(String path) throws IOException {
+    	FileSystem fs = FileSystem.get(URI.create(path), PoIDriver.GET.getConf());
+        Path p = new Path(path);
+
         boolean check = false;
-        if (fs.exists(path)) {
-            FileStatus[] ls = fs.listStatus(path);
+
+        if (fs.exists(p)) {
+            FileStatus[] ls = fs.listStatus(p);
             String line = new String();
 
             for (FileStatus file : ls) {
@@ -82,6 +87,39 @@ public class Utils
         return check;
     }
 
+    /**
+     * Move content from the input folder to the output folder.
+     * 
+     * @param path input folder
+     * @param dst destination folder
+     * @throws IOException
+     * @author Filippo Projetto
+     */
+    static void moveResults(String path, String dst) throws IOException {
+    	//get file system for the input file
+    	FileSystem fsIn = FileSystem.get(URI.create(path), PoIDriver.GET.getConf());
+    	//get file system for the output file
+    	FileSystem fsOut = FileSystem.get(URI.create(dst), PoIDriver.GET.getConf());
+    	//input folder path
+        Path p = new Path(path);
+        //stores info about file(s) to transfer
+        String fileName;
+        Path filePath;
+        
+        if (fsIn.exists(p)) {
+            FileStatus[] ls = fsIn.listStatus(p);
+
+            for (FileStatus file : ls) {
+            	filePath = file.getPath();
+            	fileName = filePath.getName();
+                if (fileName.startsWith("part-r-")) {                
+                	FileUtil.copy(fsIn, filePath, fsOut, new Path(dst+"/"+fileName), true, PoIDriver.GET.getConf());
+                }
+            }
+            
+        }
+    }
+    
     // ---------------------------------------------------------------------------------------------
 
     /**
@@ -101,13 +139,9 @@ public class Utils
         Job job = Job.getInstance(PoIDriver.GET.getConf());
         job.setJarByClass(PoIDriver.class);
         
-        //job.setOutputFormatClass(GraphOutputFormat.class);
-        
         FileOutputFormat.setOutputPath(job, new Path(outputDir));
+        FileInputFormat.setInputPaths(job, new Path(inputDir));
         
-        //GraphOutputFormat.setOutputPath(job, new Path(outputDir));
-        //job.setOutputFormatClass(GraphOutputFormat.class);
-        FileInputFormat.addInputPath(job, new Path(inputDir));
         job.setMapperClass(mapClass);
 
         if (combineClass != null) {

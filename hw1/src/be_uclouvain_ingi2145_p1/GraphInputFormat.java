@@ -13,37 +13,42 @@ import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.input.LineRecordReader;
-import org.apache.log4j.Logger;
 
 import be_uclouvain_ingi2145_p1.GraphNode.Color;
 
-public class GraphInputFormat extends FileInputFormat<LongWritable, GraphNode>{
+//TODO documentation
 
+/**
+ * Custom InputFormat that reads files of the particular format used to represent the graph.
+ * Rather than implement InputFormat directly, it subclass the FileInputFormat. This
+ * abstract class provides much of the basic handling necessary to manipulate files.
+ * 
+ * 
+ * 
+ * @author Filippo Projetto
+ */
+public class GraphInputFormat extends FileInputFormat<LongWritable, GraphNode>{
 	@Override
-	public RecordReader<LongWritable, GraphNode> createRecordReader(
-			InputSplit split, TaskAttemptContext context) throws IOException,
-			InterruptedException {
-		// TODO Auto-generated method stub
-			    
+	public RecordReader<LongWritable, GraphNode> createRecordReader(InputSplit split, TaskAttemptContext context) throws IOException, InterruptedException 
+	{
 		return new GraphNodeRecordReader();
 	}
-	
 
 	static class GraphNodeRecordReader extends RecordReader<LongWritable, GraphNode>{
-
 		private LineRecordReader lineReader;
+		@SuppressWarnings("unused")
 		private LongWritable lineKey;
 		private Text lineValue;
-		
+
 		private GraphNode node;
 		private LongWritable id;
-				
+
 		public GraphNodeRecordReader() {
-			// TODO Auto-generated constructor stub
+			
 			lineReader = new LineRecordReader();
 			lineKey = lineReader.getCurrentKey();
 			lineValue = lineReader.getCurrentValue();
-			
+
 			node = new GraphNode();
 			id = new LongWritable();
 		}
@@ -51,120 +56,101 @@ public class GraphInputFormat extends FileInputFormat<LongWritable, GraphNode>{
 		@Override
 		public void initialize(InputSplit split, TaskAttemptContext context)
 				throws IOException, InterruptedException {
-			// TODO Auto-generated method stub
 			lineReader.initialize(split, context);
 		}
 
-
 		@Override
 		public boolean nextKeyValue() throws IOException, InterruptedException {
-			// TODO Auto-generated method stub
+			// try to parse 
+			int distance;
+			Integer id;
+			List<Integer> roots;
+			List<Integer> edges;
+			Color color;
+			String edgesStringList, rootsStringList, distanceString;
+			StringTokenizer stEdges, stRoots, stLine;
+			
 			if (!lineReader.nextKeyValue()) {
 				return false;
 			}
-			
-			
+
 			lineValue = lineReader.getCurrentValue();
 			lineKey = lineReader.getCurrentKey();
+
+			stLine = new StringTokenizer(lineValue.toString(), " ");
 			
-			// parse the lineValue which is in the format:
-			// objName, x, y, z
-			//stringtokenizer is twice faster than split
-			StringTokenizer st = new StringTokenizer(lineValue.toString(), " ");
-			if (st.countTokens() != 5) {
-				throw new IOException("Invalid record received");
+			if (stLine.countTokens() != 5) {
+				throw new IOException("Invalid record received: "+lineValue.toString());
 			}
-		     
-			// try to parse 
-			int distance;
-			Integer parentId, id;
-			
-			Color color;
-			String edgesStringList = "";
-			String tmp;
-			
+
 			try {
-				id = Integer.parseInt(st.nextToken().trim());
-				edgesStringList = st.nextToken();
+				id = Integer.parseInt(stLine.nextToken().trim());
+				edgesStringList = stLine.nextToken();
+				distanceString = stLine.nextToken().trim();
 				
-				tmp = st.nextToken().trim();
-				if(tmp.compareTo("MAX") == 0){
+				edges = new ArrayList<Integer>();
+				stEdges = new StringTokenizer(edgesStringList, ",");
+				while(stEdges.hasMoreTokens()){
+						edges.add(Integer.parseInt(stEdges.nextToken()));
+				}
+				
+				if(distanceString.compareTo("MAX") == 0){
 					distance = Integer.MAX_VALUE;
 				}else{
-					distance = Integer.parseInt(tmp);
+					distance = Integer.parseInt(distanceString);
 				}
 				
-				tmp = st.nextToken().trim();
-				if(tmp.compareTo("null") == 0){
-					parentId = null;
-				}else{
-					parentId = Integer.parseInt(tmp);
+				rootsStringList = stLine.nextToken().trim();
+				
+				roots = new ArrayList<Integer>();
+				if(rootsStringList.compareTo("null") != 0){
+					stRoots = new StringTokenizer(rootsStringList, ",");
+					while(stRoots.hasMoreTokens()){
+							roots.add(Integer.parseInt(stRoots.nextToken()));
+					}
 				}
-				color = Enum.valueOf(Color.class, st.nextToken().trim());
+				
+				color = Enum.valueOf(Color.class, stLine.nextToken().trim());
 			} catch (NumberFormatException nfe) {
 				throw new IOException("Error parsing integer value in record");
 			} catch(IllegalArgumentException iae){
 				throw new IOException("Error parsing enum Color value in record");
 			}
 
-			List<Integer> edges = new ArrayList<Integer>();
-
-			
-			StringTokenizer stEdges = new StringTokenizer(edgesStringList, ",");
-			while(stEdges.hasMoreTokens()){
-				try {
-					edges.add(Integer.parseInt(stEdges.nextToken()));
-				}catch(NumberFormatException nfe){
-					throw new IOException("Error parsing integer value in record");
-				}
-			}
-
 			// now that we know we'll succeed, overwrite the output objects
-			node.id = id;
-			node.distance = distance;
-			node.parentId = parentId;
-			node.color = color;
-			node.edges = edges;		    
-			node.nEdges = edges.size();
-			
+			node.setId(id);
+			node.setDistance(distance);
+			node.setRoots(roots);
+			node.setColor(color);
+			node.setEdges(edges);
+
 			this.id.set((long)id); // objName is the output key.
 
-			
-			
 			return true;
 		}
 
 
 		@Override
-		public LongWritable getCurrentKey() throws IOException,
-				InterruptedException {
-			// TODO Auto-generated method stub
+		public LongWritable getCurrentKey() throws IOException, InterruptedException 
+		{
 			return id;
 		}
 
 
 		@Override
-		public GraphNode getCurrentValue() throws IOException,
-				InterruptedException {
-			// TODO Auto-generated method stub
+		public GraphNode getCurrentValue() throws IOException, InterruptedException 
+		{
 			return node;
 		}
 
 		@Override
 		public float getProgress() throws IOException, InterruptedException {
-			// TODO Auto-generated method stub
 			return lineReader.getProgress();
 		}
 
 		@Override
 		public void close() throws IOException {
-			// TODO Auto-generated method stub
 			lineReader.close();
 		}
-
 	}
-
-	
-
-	
 }
