@@ -93,7 +93,6 @@ public class Utils
      * @param path input folder
      * @param dst destination folder
      * @throws IOException
-     * @author Filippo Projetto
      */
     static void moveResults(String path, String dst) throws IOException {
     	//get file system for the input file

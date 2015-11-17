@@ -13,9 +13,6 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.log4j.Logger;
-
-//TODO documentation
 
 /**
  * Custom OutputFormat that reads files of the particular format used to represent the graph.
@@ -30,25 +27,23 @@ public class GraphOutputFormat extends FileOutputFormat<Text, GraphNode>{
 	@Override
 	public RecordWriter<Text, GraphNode> getRecordWriter(TaskAttemptContext job) throws IOException, InterruptedException 
 	{
-		FSDataOutputStream fileOut=null;
+		FSDataOutputStream fileOut = null;
 		String extension = "";
 
 		Path file = getDefaultWorkFile(job, extension);
 
 		FileSystem fs = file.getFileSystem(job.getConfiguration());
-		try{
-			fileOut = fs.create(file, true);
-		}catch(IOException e){
-			Logger.getRootLogger().fatal("[INGI2145] error while creating file");
-			Logger.getRootLogger().fatal(e.getMessage());
-			throw e;
-		}
+		
+		fileOut = fs.create(file, true);
 
 		return new GraphNodeRecordWriter(fileOut);
 	}
 	
 	static class GraphNodeRecordWriter extends RecordWriter<Text, GraphNode>
 	{
+		/*
+		 * where the output data is written at the end of mapreduce job
+		 */
 		private DataOutputStream out;
 
 		public GraphNodeRecordWriter(DataOutputStream out) throws IOException {
@@ -63,8 +58,12 @@ public class GraphOutputFormat extends FileOutputFormat<Text, GraphNode>{
 				return;
 			}
 
+			//write node id
 			out.writeBytes(key.toString()+" ");
 
+			/*
+			 * write neighborhood as id separated by comma
+			 */
 			it = value.getEdges().iterator();
 
 			if(it.hasNext()){
@@ -76,13 +75,17 @@ public class GraphOutputFormat extends FileOutputFormat<Text, GraphNode>{
 				throw new IOException("Node " + key.toString() + "without neighboors: "+value.getEdges()+" "+Thread.currentThread().getStackTrace());
 			}
 
-			
+			//write distance
 			if(value.getDistance() == Integer.MAX_VALUE){
 				out.writeBytes(" MAX");
 			}else{
 				out.writeBytes(" "+value.getDistance());
 			}
 			
+			/*
+			 * write list of first hop to reach this node from the source.
+			 * node id separated by comma.
+			 */
 			it = value.getRoots().iterator();
 
 			if(it.hasNext()){
@@ -94,7 +97,10 @@ public class GraphOutputFormat extends FileOutputFormat<Text, GraphNode>{
 				out.writeBytes(" null");
 			}
 			
+			//write color
 			out.writeBytes(" "+value.getColor());
+			
+			//end of line
 			out.writeBytes(System.lineSeparator());
 		}
 		

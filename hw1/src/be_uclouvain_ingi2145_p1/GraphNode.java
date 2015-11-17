@@ -21,11 +21,23 @@ import org.apache.hadoop.io.Writable;
  */
 public class GraphNode implements Writable{
 	
-	private int id; //node id
-	private int distance; //minimum distance from source node
-	private List<Integer> edges; //neighborhood: list of nodes id
-	private Color color; //represents the status of the node during the breadth search
-	/*
+	/**
+	 * node id
+	 */
+	private int id; 
+	/**
+	 * minimum distance from source node
+	 */
+	private int distance; 
+	/**
+	 * neighborhood: list of nodes id
+	 */
+	private List<Integer> edges;
+	/**
+	 * represents the status of the node during the breadth search
+	 */
+	private Color color;
+	/**
 	 * First hop to reach this node from the source, with the minimum cost. Eventually more than one.
 	 * It is used to give in output the set of immediate neighbors of the source node that have been used  
 	 * to PoIs found by the algorithm.
@@ -38,7 +50,6 @@ public class GraphNode implements Writable{
 	 * Set distance to the source as infinite (MAX_VALUE) and mark it as not visited/examined
 	 * yet (WHITE).
 	 * 
-	 * @param id node id
 	 */
 	public GraphNode()
 	{
@@ -156,7 +167,7 @@ public class GraphNode implements Writable{
 
 	/**
 	 * 
-	 * @return set the list of neighbors
+	 * set the list of neighbors
 	 */
 	public void setEdges(List<Integer> edges) {
 		this.edges = new ArrayList<Integer>(edges);
@@ -172,7 +183,7 @@ public class GraphNode implements Writable{
 
 	/**
 	 * 
-	 * @return set the color according to the node state during the search (WHITE, GRAY, BLACK).
+	 * set the color according to the node state during the search (WHITE, GRAY, BLACK).
 	 */
 	public void setColor(Color color) {
 		this.color = color;
@@ -185,9 +196,7 @@ public class GraphNode implements Writable{
 	 */
 	public void addRoots(List<Integer> roots) 
 	{
-		for (Integer node : roots){
-			roots.add(node);
-		}
+		roots.addAll(roots);
 	}
 	
 	/**

@@ -67,9 +67,12 @@ public class PoIDriver extends Configured implements Tool
 		GET = new PoIDriver();
 		Configuration conf = new Configuration();
 
-		if(args.length < 5)
+		if(args.length < 6){
+			Logger.getRootLogger().fatal("[INGI2145] invalid command line. It should have 6 arguments at least.");
 			return;
+		}
 		
+		// pattern: /src-<src id>-dst-<dst id>
 		baseDir = "/src-"+args[3]+"-dst-"+args[4];		
 		
 		int res = ToolRunner.run(conf, GET, args);
@@ -122,7 +125,6 @@ public class PoIDriver extends Configured implements Tool
 	 * @param nReducers 
 	 * @throws Exception 
 	 * 
-	 * @author Filippo Projetto
 	 */
 	void init(String inputDir, String outputDir, String srcId, String dstId, int nReducers) throws Exception
 	{
@@ -160,7 +162,6 @@ public class PoIDriver extends Configured implements Tool
 	 * @param nReducers
 	 * @throws Exception
 	 * 
-	 * @author Filippo Projetto
 	 */
 	void iter(String inputDir, String outputDir, String srcId, String dstId, int iterNo, int nReducers) throws Exception
 	{
@@ -178,7 +179,7 @@ public class PoIDriver extends Configured implements Tool
 		job.setInputFormatClass(GraphInputFormat.class);
 
 		/*
-		 * Make available destination node's id to mappers and reducers
+		 * Make available source node's id to mappers and reducers
 		 */
 		job.getConfiguration().set("src", srcId);
 		
@@ -198,7 +199,6 @@ public class PoIDriver extends Configured implements Tool
 	 * @param nReducers
 	 * @throws Exception
 	 * 
-	 * @author Filippo Projetto
 	 */
 	void evaluate(String inputDir, String outputDir, String srcId, String dstId, int nReducers) throws Exception
 	{
@@ -210,6 +210,12 @@ public class PoIDriver extends Configured implements Tool
 		 * custom input format class: see  GraphOutputFormat file
 		 */
 		job.setInputFormatClass(GraphInputFormat.class);
+		
+		/*
+		 * Make available to mappers and reducers the destination node's id 
+		 * and the relative path of the file where to store the adjacency list
+		 * for the destination node. 
+		 */
 		job.getConfiguration().set("dst", dstId);
 		job.getConfiguration().set("dstAdjList", outputDir+dstAdjList);
 		
@@ -219,16 +225,16 @@ public class PoIDriver extends Configured implements Tool
 	/**
 	 * This function runs the entire Person of Interest algorithm from beginning to end, that
 	 * means until at least a PoI has found or the maximum number of hops nHops has exceeded.
+	 * Finally, the result file is moved to the output directory.
 	 *  
 	 * @param inputDir
 	 * @param outputDir
 	 * @param srcId source node id
 	 * @param dstId destination node id
-	 * @param maxHops: maximum number of hops in which the destination should be reached
+	 * @param maxHops maximum number of hops in which the destination should be reached
 	 * @param nReducers
 	 * @throws Exception
 	 * 
-	 * @author Filippo Projetto
 	 */
 	void composite(String inputDir, String outputDir, String srcId, String dstId, int maxHops, int nReducers) throws Exception
 	{
@@ -305,7 +311,6 @@ public class PoIDriver extends Configured implements Tool
 	 * @param nReducers
 	 * @throws Exception
 	 * 
-	 * @author Filippo Projetto
 	 */
 	void evaluateExtra(String inputDir, String outputDir, String srcId, String dstId, int nReducers) throws Exception
 	{
@@ -317,6 +322,12 @@ public class PoIDriver extends Configured implements Tool
 		 * custom input format class: see  GraphOutputFormat file
 		 */
 		job.setInputFormatClass(GraphInputFormat.class);
+		
+		/*
+		 * Make available to mappers and reducers the destination node's id 
+		 * and the relative path of the file where to store the adjacency list
+		 * for the destination node. 
+		 */
 		job.getConfiguration().set("dst", dstId);
 		job.getConfiguration().set("dstAdjList", outputDir+dstAdjList);
 		
@@ -326,7 +337,8 @@ public class PoIDriver extends Configured implements Tool
 	/**
 	 * This function runs the entire Person of Interest algorithm from beginning to end, that
 	 * means until at least a PoI has found or the maximum number of hops nHops has exceeded.
-	 *  
+	 * Finally, the result file is moved to the output directory.
+	 * 
 	 * It differs from the <composite> function only because internally calls <evaluateExtra>
 	 * function instead of <evaluate> to perform the solution evaluation task.
 	 * 
@@ -334,11 +346,10 @@ public class PoIDriver extends Configured implements Tool
 	 * @param outputDir
 	 * @param srcId source node id
 	 * @param dstId destination node id
-	 * @param maxHops: maximum number of hops in which the destination should be reached
+	 * @param maxHops maximum number of hops in which the destination should be reached
 	 * @param nReducers
 	 * @throws Exception
 	 * 
-	 * @author Filippo Projetto
 	 */
 	void compositeExtra(String inputDir, String outputDir, String srcId, String dstId, int maxHops, int nReducers) throws Exception
 	{

@@ -16,14 +16,10 @@ import org.apache.hadoop.mapreduce.lib.input.LineRecordReader;
 
 import be_uclouvain_ingi2145_p1.GraphNode.Color;
 
-//TODO documentation
-
 /**
  * Custom InputFormat that reads files of the particular format used to represent the graph.
  * Rather than implement InputFormat directly, it subclass the FileInputFormat. This
  * abstract class provides much of the basic handling necessary to manipulate files.
- * 
- * 
  * 
  * @author Filippo Projetto
  */
@@ -35,20 +31,34 @@ public class GraphInputFormat extends FileInputFormat<LongWritable, GraphNode>{
 	}
 
 	static class GraphNodeRecordReader extends RecordReader<LongWritable, GraphNode>{
+		/*
+		 * handler to read a file, line by line
+		 */
 		private LineRecordReader lineReader;
+		/*
+		 * stores a file line number
+		 */
 		@SuppressWarnings("unused")
 		private LongWritable lineKey;
+		/*
+		 * stores a file line
+		 */
 		private Text lineValue;
-
+		
+		/*
+		 * output of this custom input formatter
+		 */
 		private GraphNode node;
+		
+		/*
+		 * stores a line number
+		 */
 		private LongWritable id;
 
 		public GraphNodeRecordReader() {
-			
 			lineReader = new LineRecordReader();
 			lineKey = lineReader.getCurrentKey();
 			lineValue = lineReader.getCurrentValue();
-
 			node = new GraphNode();
 			id = new LongWritable();
 		}
@@ -73,10 +83,14 @@ public class GraphInputFormat extends FileInputFormat<LongWritable, GraphNode>{
 			if (!lineReader.nextKeyValue()) {
 				return false;
 			}
-
-			lineValue = lineReader.getCurrentValue();
-			lineKey = lineReader.getCurrentKey();
-
+			
+			lineValue = lineReader.getCurrentValue();//get a file line
+			lineKey = lineReader.getCurrentKey();//get the line number 
+			
+			/*
+			 * Create the graph structure from the text file.
+			 * <id> <neighborhood> <distance> <list of first hop to reach this node from the source>
+			 */
 			stLine = new StringTokenizer(lineValue.toString(), " ");
 			
 			if (stLine.countTokens() != 5) {
