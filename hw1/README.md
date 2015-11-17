@@ -28,6 +28,4 @@ The jar will be put under `build/libs`.
 
     ./run.sh <arg1> <arg2> <arg3> ...
 
-- Some sample test configurations are provided in the test_configurations file
-
 - A sample graph input file is provided as well, please take a look at test_inputs folder
